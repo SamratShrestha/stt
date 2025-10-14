@@ -1,42 +1,26 @@
-FROM python:3.13
+FROM rocm/pytorch:latest
 
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app/
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ffmpeg git cmake clang build-essential sudo && rm -rf /var/lib/apt/lists/*
 
-# Install uv
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
-COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
+# Build CTranslate2-rocm
+RUN conda init bash && bash -c "conda activate py_3.9 && git clone https://github.com/arlo-phoenix/CTranslate2-rocm.git --recurse-submodules && cd CTranslate2-rocm && export CLANG_CMAKE_CXX_COMPILER=clang++ CXX=clang++ HIPCXX=\"\$(hipconfig -l)/clang\" HIP_PATH=\"\$(hipconfig -R)\" && cmake -S . -B build -DWITH_MKL=OFF -DWITH_HIP=ON -DCMAKE_HIP_ARCHITECTURES=gfx1030 -DBUILD_TESTS=ON -DWITH_CUDNN=ON && cmake --build build -- -j16 && cd build && cmake --install . --prefix \$CONDA_PREFIX && sudo ldconfig"
 
-# Place executables in the environment at the front of the path
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#using-the-environment
-ENV PATH="/app/.venv/bin:$PATH"
+# Install Python dependencies
+RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.1 --force-reinstall
+RUN pip3 install transformers pandas nltk pyannote.audio==3.1.1 faster-whisper==1.0.1 -U
+RUN pip3 install whisperx --no-deps
 
-# Compile bytecode
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#compiling-bytecode
-ENV UV_COMPILE_BYTECODE=1
+ENV LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$CONDA_PREFIX/lib/
 
-# uv Cache
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#caching
-ENV UV_LINK_MODE=copy
-
-# Install dependencies
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project
+# Install app dependencies
+COPY pyproject.toml /app/
+RUN pip install -e .
 
 ENV PYTHONPATH=/app
 
-COPY ./pyproject.toml ./uv.lock /app/
-
 COPY ./app /app/app
-
-# Sync the project
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync

@@ -3,10 +3,18 @@ name = "fastapi-project"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.9"
 dependencies = [
     "fastapi[standard]>=0.119.0",
     "pydantic-settings>=2.11.0",
     "uvicorn>=0.37.0",
-    "whisperx>=3.7.2",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "transformers",
+    "pandas",
+    "nltk",
+    "pyannote.audio==3.1.1",
+    "faster-whisper==1.0.1",
+    "whisperx",
 ]
