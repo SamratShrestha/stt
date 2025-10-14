@@ -1,0 +1,33 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+    env_file:
+      - .env
+    environment:
+      - DOMAIN=${DOMAIN}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
+      - SENTRY_DSN=${SENTRY_DSN}
+
+    command: >
+      sh -c "if [ \"$$ENVIRONMENT\" = \"local\" ]; then
+        fastapi run --reload app/main.py
+      else
+        fastapi run --workers 4 app/main.py
+      fi"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health-check/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  app-db-data:
