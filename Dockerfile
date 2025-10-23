@@ -1,12 +1,12 @@
 FROM rocm/dev-ubuntu-24.04:6.4.4-complete
 
-ENV GFX_ARCH=gfx1100
+ENV GFX_ARCH=gfx1151
 ENV ROCM_VERSION=6.4
-ENV HSA_OVERRIDE_GFX_VERSION=11.0.0
+ENV HSA_OVERRIDE_GFX_VERSION=11.5.1
 ENV HIP_VISIBLE_DEVICES=0
 ENV ROCM_PATH=/opt/rocm
-ENV PYTORCH_ROCM_ARCH=gfx1100
-ENV PYTHONUNBUFFERED=1
+ENV PYTORCH_ROCM_ARCH=gfx1151
+
 
 RUN apt update \
     && apt install -y --no-install-recommends \
@@ -34,6 +34,11 @@ RUN python3.11 -m pip install --upgrade --ignore-installed pip setuptools wheel 
 RUN python3.11 -m pip install --break-system-packages wheel setuptools \
     && python3.11 -m pip install --no-cache-dir --break-system-packages --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.4/ \
     && rm -rf ~/.cache/pip
+
+#RUN wget https://raw.githubusercontent.com/wiki/ROCm/pytorch/files/install_kdb_files_for_pytorch_wheels.sh\
+#    && chmod +x install_kdb_files_for_pytorch_wheels.sh \
+#    && ./install_kdb_files_for_pytorch_wheels.sh \
+#    && rm ./install_kdb_files_for_pytorch_wheels.sh
 
 RUN apt update \
     && apt install -y \
@@ -72,45 +77,13 @@ RUN cd /opt/whisperx/CTranslate2-rocm/python && \
     
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib/llvm/lib/
 
-RUN python3.11 -m pip install --break-system-packages torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.4 --force-reinstall
-RUN python3.11 -m pip install --break-system-packages transformers pandas nltk pyannote.audio==3.1.1 faster-whisper==1.1.1 -U
-RUN python3.11 -m pip install whisperx --break-system-packages --no-deps
+RUN python3.11 -m pip install --break-system-packages torch~=2.8.0 torchvision torchaudio~=2.2.0 --index-url https://download.pytorch.org/whl/rocm6.4 --force-reinstall
+RUN python3.11 -m pip install --break-system-packages transformers pandas nltk "pyannote.audio>=3.3.2,<4.0.0" faster-whisper>=1.1.1 omegaconf -U
+RUN python3.11 -m pip install whisperx --break-system-packages --no-deps 
 
 RUN python3.11 -m pip install "numpy<2.0" --break-system-packages
 RUN python3.11 -m pip install matplotlib --break-system-packages
+RUN python3.11 -m pip install fastapi[standard] pydantic-settings uvicorn
 
 WORKDIR /app/
-
-# Install uv
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
-COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
-
-# Place executables in the environment at the front of the path
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#using-the-environment
-ENV PATH="/app/.venv/bin:$PATH"
-
-# Compile bytecode
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#compiling-bytecode
-ENV UV_COMPILE_BYTECODE=1
-
-# uv Cache
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#caching
-ENV UV_LINK_MODE=copy
-
-# Install dependencies
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project
-
-ENV PYTHONPATH=/app
-
-COPY ./pyproject.toml ./uv.lock /app/
-
-COPY ./app /app/app
-
-# Sync the project
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync
+COPY ./app ./app/
