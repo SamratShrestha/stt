@@ -108,7 +108,7 @@ async def transcribe(
 
             diarize_segments = diarize_model(audio)
 
-            result["segments"] = whisperx.assign_word_speakers(diarize_segments, result["segments"])
+            result["segments"] = whisperx.assign_word_speakers(diarize_segments, aligned_result).get("segments")
 
             logger.info(f"Request ID: {request_id} - Diarization took {time.time() - diarize_start:.2f} seconds")
 
@@ -117,6 +117,8 @@ async def transcribe(
         # Add id to each segment
         for i, segment in enumerate(result["segments"]):
             segment["id"] = i
+            if 'speaker' in segment:
+                segment['speaker'] = int(segment['speaker'].split('_')[1])
 
         logger.info(f"Request ID: {request_id} - Transcription completed for {audio_file.filename}")
     except Exception as e:
