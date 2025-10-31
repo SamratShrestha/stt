@@ -8,6 +8,9 @@ import tempfile
 import torch
 import gc
 
+TEMP_DIR = os.path.join(os.path.dirname(__file__), '..', 'temp')
+os.makedirs(TEMP_DIR, exist_ok=True)
+
 from app.core.config import settings, Language
 from app.core.models import check_device, load_align_model_cached, load_diarize_model_cached, CustomWhisperModel
 
@@ -34,7 +37,7 @@ async def transcribe(
     task: str = "transcribe",
 ) -> dict:
     start_time = time.time()  # Start timing
-    with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{audio_file.filename}") as temp_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{audio_file.filename}", dir=TEMP_DIR) as temp_file:
         temp_file.write(audio_file.file.read())
         file_path = temp_file.name
 
@@ -126,7 +129,8 @@ async def transcribe(
         raise
     finally:
         try:
-            os.remove(file_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
         except Exception:
             logger.error(f"Request ID: {request_id} - Could not remove temporary file: {file_path}")
         

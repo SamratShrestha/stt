@@ -108,8 +108,8 @@ async def initialize_model(model_name: str) -> CustomWhisperModel:
         device=inference_device,
         device_index=config.device_index,
         compute_type=config.compute_type.value,
-        # cpu_threads=config.cpu_threads,
-        # num_workers=config.num_workers,
+        cpu_threads=config.cpu_threads,
+        num_workers=config.num_workers,
         local_files_only=config.local_files_only,
         download_root=config.download_root
     )
