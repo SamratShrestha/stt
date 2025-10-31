@@ -183,7 +183,7 @@ class WhisperConfig(BaseModel):
     device_index: int | list[int] = Field(default=0)
     compute_type: Quantization = Field(default=Quantization.DEFAULT)
     cpu_threads: int = Field(default=16)
-    num_workers: int = Field(default=1)
+    num_workers: int = Field(default=0)
     vad_method: VadMethod = Field(default=VadMethod.PYANNOTE)
     vad_model: str = Field(default=None)
     vad_options: dict = Field(default=None)
