@@ -71,7 +71,7 @@ async def transcribe(
             audio=audio,
             batch_size=batch_size,
             chunk_size=chunk_size,
-            num_workers=settings.WHISPER.num_workers,
+            num_workers=0,
             language=language,
             task=task,
         )
@@ -142,5 +142,10 @@ async def transcribe(
             cleanup_cache_only()
             logger.debug(f"Request ID: {request_id} - Cache cleanup completed")
     print("result", result)
+
+    if result["segments"]:
+        audio_duration = result["segments"][-1]["end"]
+        result["time_taken"] = result["duration"]
+        result["duration"] = audio_duration 
 
     return result
